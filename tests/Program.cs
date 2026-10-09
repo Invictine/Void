@@ -92,6 +92,33 @@ try
     try { new FocusLock(clock).Start(-1); throw new Exception("negative duration should be rejected"); }
     catch (ArgumentOutOfRangeException) { }
 
+    const string validFrogState = """{"protocolVersion":1,"title":"Study the chapter","projectName":"Chemistry","phase":"working","cycleDate":"2026-10-05","trackedSeconds":120,"requiredSeconds":600,"tickedOff":false,"running":true,"remainingSeconds":900,"blockMinutes":25,"tools":[{"id":"chrome.exe","label":"Chrome"}],"domains":["YouTube.com","https://youtube.com/"]}""";
+    var frogState = FocusLockSessionState.Parse(validFrogState);
+    Check(frogState.Tools.Single().Id == "chrome.exe" && frogState.Domains.Count == 1 && frogState.Domains[0] == "youtube.com",
+        "protocol parsing should validate tools and normalize duplicate HTTPS domains");
+    var optionalProject = FocusLockSessionState.Parse(validFrogState.Replace("\"projectName\":\"Chemistry\",", "\"projectName\":null,"));
+    Check(optionalProject.ProjectName is null, "a missing project name should remain optional");
+    var missingProject = FocusLockSessionState.Parse(validFrogState.Replace("\"projectName\":\"Chemistry\",", ""));
+    Check(missingProject.ProjectName is null, "a missing project name field should remain optional");
+    var readyEnvelope = FocusLockProtocol.SerializeAction(new FocusLockAction { Action = "ready" });
+    Check(readyEnvelope.Contains("\"protocolVersion\":1", StringComparison.Ordinal) && readyEnvelope.Contains("\"action\":\"ready\"", StringComparison.Ordinal) && !readyEnvelope.Contains("toolId", StringComparison.Ordinal),
+        "protocol events should use the versioned camel-case schema without unsupported fields");
+    var legacyInstalledApp = new InstalledApp("Legacy entry", "Legacy.Package!App");
+    Check(legacyInstalledApp.ExecutableName is null, "existing two-argument installed-app construction should remain compatible");
+    var executableMatches = InstalledApps.FindByExecutableName([
+        new InstalledApp("ChatGPT", "OpenAI.Codex_abc!App", "ChatGPT.exe"),
+        new InstalledApp("Second ChatGPT", "Other.Package!App", "chatgpt.EXE"),
+        new InstalledApp("Codex CLI", "CLI.Package!App", "codex.exe"),
+    ], "ChatGPT.exe");
+    Check(executableMatches.Count == 2 && executableMatches.All(app => string.Equals(app.ExecutableName, "ChatGPT.exe", StringComparison.OrdinalIgnoreCase)),
+        "packaged app matching should use an exact executable basename and retain ambiguity for explicit selection");
+    try { InstalledApps.FindByExecutableName([], @"C:\Apps\ChatGPT.exe"); throw new Exception("executable resolver should reject paths instead of basenames"); }
+    catch (ArgumentException) { }
+    ExpectInvalid(() => FocusLockSessionState.Parse(validFrogState.Replace("\"protocolVersion\":1", "\"protocolVersion\":2")), "unsupported protocol versions should be rejected");
+    ExpectInvalid(() => FocusLockSessionState.Parse(validFrogState.Replace("YouTube.com", "http://example.com")), "non-HTTPS domains should be rejected");
+    ExpectInvalid(() => FocusLockSessionState.Parse(validFrogState.Replace("\"label\":\"Chrome\"", "\"label\":\"Chrome\",\"executablePath\":\"C:\\\\Apps\\\\other.exe\"")), "tool paths that do not match their approved basename should be rejected");
+    ExpectInvalid(() => FocusLockSessionState.Parse("""{"protocolVersion":1,"blockMinutes":25}"""), "incomplete protocol states should be rejected");
+
     Check(Marshal.SizeOf<DisplayPath>() == 72, "DISPLAYCONFIG_PATH_INFO should be 72 bytes");
     Check(Marshal.SizeOf<DisplayMode>() == 64, "DISPLAYCONFIG_MODE_INFO should be 64 bytes");
     Check(Marshal.SizeOf<DisplaySource>() == 20, "DISPLAYCONFIG_PATH_SOURCE_INFO should be 20 bytes");

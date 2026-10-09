@@ -7,7 +7,7 @@ using System.Text;
 namespace VoidApp;
 
 /// <summary>A packaged app available to the current Windows user.</summary>
-public sealed record InstalledApp(string Name, string AppUserModelId)
+public sealed record InstalledApp(string Name, string AppUserModelId, string? ExecutableName = null)
 {
     public override string ToString() => Name;
 }
@@ -17,7 +17,7 @@ public static class InstalledApps
 {
     private const int TimeoutMilliseconds = 10_000;
     private const string PowerShellRelativePath = @"WindowsPowerShell\v1.0\powershell.exe";
-    private const string Query = "[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); $ErrorActionPreference = 'Stop'; try { $apps = @(Get-StartApps | Where-Object { $_.AppID -like '*!*' } | ForEach-Object { [PSCustomObject]@{ Name = [string]$_.Name; AppUserModelId = [string]$_.AppID } }); ConvertTo-Json -InputObject $apps -Compress -ErrorAction Stop } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }";
+    private const string Query = "[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); $ErrorActionPreference = 'Stop'; try { $packageExecutables = @{}; foreach ($package in @(Get-AppxPackage)) { try { $manifestPath = Join-Path $package.InstallLocation 'AppxManifest.xml'; if (Test-Path -LiteralPath $manifestPath) { [xml]$manifest = Get-Content -LiteralPath $manifestPath -Raw; foreach ($application in $manifest.SelectNodes(\"//*[local-name()='Applications']/*[local-name()='Application']\")) { $executableName = [IO.Path]::GetFileName([string]$application.Executable); if ($executableName) { $appUserModelId = [string]$package.PackageFamilyName + '!' + [string]$application.Id; $packageExecutables[$appUserModelId] = $executableName } } } } catch { } }; $apps = @(Get-StartApps | Where-Object { $_.AppID -like '*!*' } | ForEach-Object { $appUserModelId = [string]$_.AppID; [PSCustomObject]@{ Name = [string]$_.Name; AppUserModelId = $appUserModelId; ExecutableName = [string]$packageExecutables[$appUserModelId] } }); ConvertTo-Json -InputObject $apps -Compress -ErrorAction Stop } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }";
 
     /// <summary>Loads packaged Start apps for the signed-in user.</summary>
     public static async Task<List<InstalledApp>> LoadAsync()
@@ -89,5 +89,20 @@ public static class InstalledApps
         {
             throw new InvalidOperationException("Windows app discovery returned data that could not be read. You can browse for an app executable and enter its AppUserModelID manually.", ex);
         }
+    }
+
+    /// <summary>Returns packaged apps whose installed manifest names the exact approved executable.</summary>
+    public static List<InstalledApp> FindByExecutableName(IEnumerable<InstalledApp> apps, string executableName)
+    {
+        if (string.IsNullOrWhiteSpace(executableName) ||
+            !string.Equals(Path.GetFileName(executableName), executableName, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("An executable basename is required.", nameof(executableName));
+        return apps.Where(app => !string.IsNullOrWhiteSpace(app.ExecutableName) &&
+                string.Equals(Path.GetFileName(app.ExecutableName), executableName, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(app => app.AppUserModelId, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(app => app.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(app => app.AppUserModelId, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }

@@ -40,6 +40,13 @@ public sealed class Config
         return config;
     }
 
+    /// <summary>Reads saved mappings for an integrated host without creating or migrating user settings.</summary>
+    public static Config LoadExistingReadOnly()
+    {
+        if (!File.Exists(SettingsPath)) return new Config();
+        return NormalizeAndValidate(Deserialize(File.ReadAllText(SettingsPath), SettingsPath), resolveRelativePaths: true);
+    }
+
     /// <summary>Atomically persists these settings in the current user's profile.</summary>
     public void Save()
     {

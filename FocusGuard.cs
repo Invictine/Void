@@ -12,7 +12,7 @@ internal sealed class FocusGuard
     private static readonly HashSet<string> SafeWindowsProcesses = new(StringComparer.OrdinalIgnoreCase)
     {
         "consent.exe", "credentialuibroker.exe", "applicationframehost.exe",
-        "textinputhost.exe", "runtimebroker.exe", "taskmgr.exe",
+        "textinputhost.exe", "runtimebroker.exe", "taskmgr.exe", "systemsettings.exe",
         // Windows may surface Search and Start while switching or opening system UI.
         "searchhost.exe", "startmenuexperiencehost.exe", "shellexperiencehost.exe",
     };

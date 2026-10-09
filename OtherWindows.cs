@@ -17,6 +17,7 @@ internal static class OtherWindows
         "explorer", "dwm", "sihost", "taskmgr", "taskhostw", "ctfmon",
         "consent", "credentialuibroker", "applicationframehost", "textinputhost",
         "runtimebroker", "searchhost", "startmenuexperiencehost", "shellexperiencehost",
+        "systemsettings",
         "system", "registry", "smss", "csrss", "wininit", "services", "lsass", "winlogon",
         "fontdrvhost",
     };

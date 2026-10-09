@@ -47,6 +47,16 @@ Settings are in `%LOCALAPPDATA%\Void\config.json`; history is in `%LOCALAPPDATA%
 
 Sessions are not resumed after restarting Void. A forced process termination can lose the current history record. The running timer uses monotonic elapsed time, so changing the Windows clock does not shorten a block.
 
+## FocusLock integration
+
+Void is also the Windows Frog launcher inside FocusLock. The same source is mirrored at `windows/void/` in `Invictine/focuslock`; shared launcher improvements must ship in both repositories (see `AGENTS.md`). Standalone Void continues to use its own launcher, presets, settings, timers, history, and recovery without a FocusLock account.
+
+FocusLock builds a separately named `FocusLock.Void.exe` and starts it with `--focuslock`. This mode receives versioned session snapshots over redirected standard input and emits user actions over redirected standard output. It shows the current Frog task, approved app/site shortcuts, the host's timer, and task completion controls. FocusLock owns all timing, work credit, Frog completion, and blocking. Finishing a timer does not automatically tick off the task, and closing the launcher does not clear FocusLock's boundaries.
+
+Integrated mode does not run Void's standalone foreground guard or change display/taskbar configuration. It closes when the host disconnects or stops sending snapshots. Its return and emergency shortcuts are best effort; conflicts with an already-running standalone Void are shown on screen. App shortcuts use observed Windows executable paths or an explicitly located executable matching the approved app identity. Website shortcuts open HTTPS addresses; FocusLock's existing browser rules remain in effect.
+
+For the integrated build, run `npm run void:build` from FocusLock's `desktop/` directory. For the standalone build, use the commands below. From the FocusLock root, check source parity with `node scripts/sync-void.mjs --void-root <standalone-checkout>` before committing either shared copy.
+
 ## Build the installer
 
 Run from this folder on Windows:

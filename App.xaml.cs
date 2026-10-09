@@ -7,6 +7,11 @@ public partial class App : Application
     private LauncherWindow? launcher;
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Length == 1 && e.Args[0] == "--focuslock")
+        {
+            StartFocusLockMode();
+            return;
+        }
         if (e.Args.Length is 4 or 5 && e.Args[0] == "--recover")
         {
             // A separate instance waits for the UI process, including a forced termination.
@@ -50,10 +55,52 @@ public partial class App : Application
         home.FocusStarted += () => launcher.Hide();
         launcher.Show();
     }
+
+    private Mutex? integratedInstance;
+    private FocusLockProtocol? integratedProtocol;
+    private FrogWindow? integratedWindow;
+
+    private void StartFocusLockMode()
+    {
+        integratedInstance = new Mutex(true, "Local\\Void.FocusLockIntegrated", out bool first);
+        if (!first) { Shutdown(); return; }
+        Config settings;
+        try { settings = Config.LoadExistingReadOnly(); }
+        catch { settings = new Config(); }
+        integratedProtocol = new FocusLockProtocol();
+        bool readySent = false;
+        integratedProtocol.StateReceived += state => Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (integratedWindow is null)
+            {
+                integratedWindow = new FrogWindow(integratedProtocol, settings);
+                MainWindow = integratedWindow;
+                integratedWindow.Show();
+            }
+            integratedWindow.ApplyState(state);
+            if (!readySent)
+            {
+                readySent = true;
+                integratedProtocol.WriteAction(new FocusLockAction { Action = "ready" });
+            }
+        }));
+        integratedProtocol.Ended += reason => Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (integratedWindow is not null)
+            {
+                integratedWindow.ShowConnectionEnded(reason);
+                integratedWindow.CloseFromHost();
+            }
+            else Shutdown();
+        }));
+        integratedProtocol.Start();
+    }
     protected override void OnExit(ExitEventArgs e)
     {
         if (TaskbarSession.Active) TaskbarSession.Restore();
         instance?.Dispose();
+        integratedProtocol?.RequestStop();
+        integratedInstance?.Dispose();
         base.OnExit(e);
     }
 }
