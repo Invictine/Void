@@ -1,6 +1,6 @@
 # Void
 
-A quiet Windows focus launcher for getting into one block of work. Keep a small control on your desktop, start a timer with your chosen app, and return to the desktop when the block is done.
+I wanted starting a focus block to take fewer decisions: pick a task, launch its app, and let one small desktop control keep time. Void pairs timed work and breaks with recent app presets, a guard that returns you to the chosen app, and a clean route back to the desktop when you’re done. It’s a Windows tool you can configure around your own workflow; feedback and forks are welcome.
 
 
 ## Install
