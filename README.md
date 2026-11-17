@@ -1,6 +1,6 @@
 # Void
 
-Context switching between desktop projects should be instant and distraction-free. Void is a minimal, keyboard-driven Windows workspace launcher built with Rust and Tauri, executing quick workspace activations, application presets, and session tracking with minimal memory overhead. Global system shortcuts summon a frameless search bar to jump straight into designated workspaces. Inspect the Rust backend, configure your local presets, or contribute new desktop window-management modules.
+I wanted starting a focus block to take fewer decisions: pick a task, launch its app, and let one small desktop control keep time. Void pairs timed work and breaks with recent app presets, a guard that returns you to the chosen app, and a clean route back to the desktop when you’re done. It’s a Windows tool you can configure around your own workflow; feedback and forks are welcome.
 
 [![Void](media/overview.png)](media/walkthrough.mp4)
 *Click preview above to watch illustrated architecture overview.*
